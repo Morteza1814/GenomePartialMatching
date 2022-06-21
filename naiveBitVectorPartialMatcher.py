@@ -1,4 +1,5 @@
 import sys
+import time
 
 KMER_LENGTH = 0
 ALLOWED_EDIT_DISTANCE = 0
@@ -10,6 +11,7 @@ def compare(a,b):
 			numberOfMisMatches+=1
 	return numberOfMisMatches
 
+start_time = time.time()
 
 args = sys.argv
 KMER_LENGTH = int(args[1])
@@ -104,6 +106,8 @@ for queryInd,query in queries.items():
 			#fo.write("read" + read)
 	queriesEvaluated+=1
 	print(queriesEvaluated)
+
+print("--- %s seconds ---" % (time.time() - start_time))
 print("numberOfBitVectorFullMatches = "+str(numberOfBitVectorFullMatches))
 print("numberOfTrueFullMatches = "+str(numberOfTrueFullMatches))
 print("numberOfBitVectorPartialMatches = "+str(numberOfBitVectorPartialMatches))
