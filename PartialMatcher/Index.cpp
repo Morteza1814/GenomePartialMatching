@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <stdio.h>
 #include <string.h>
 #include "Config.hpp"
@@ -101,18 +102,96 @@ void kmerizeAndReadBitVector(const char* contig, unsigned char* bitVector)
 
 int main()
 {
-    char contig[150];
-    unsigned char bitVector[NUMBER_OF_BIT_VECTOR_BYTES];
-
-    for(int i=0 ; i<NUMBER_OF_BIT_VECTOR_BYTES ; i++)
-    {
-        bitVector[i] = 0;
-    }
-    cout << "kmer size is : " << KMER_SIZE << endl;
-    cout << "number of bit vector bytes is : " << NUMBER_OF_BIT_VECTOR_BYTES << endl;
+    char contig[151];
+    string line;
+    // ifstream readFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledDataFromSRR.fa");
+    // ifstream queryFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledQueryDataFromSRR.fa");
+    ifstream readFile("in.txt");
+    ifstream queryFile("q.txt");
+    int readCount = 0;
+    int queryCount = 0;
+    unsigned char **readsBitVector = new unsigned char*[NUMBER_OF_READS_CONTIGS];
+    unsigned char **queriesBitVector = new unsigned char*[1000];
     
-    strcpy(contig, "GCCCTGATGAATTACCTCGTCTTTTCTCATATAACATGTCCTGGGAAGCCACAACATTGTGGTAAAGCTGTTCAACTACCACCGATACCATAGCAAGATGCTCATCTAGACTGTGACGACAATTACATCGTGAGAGATTGTGCTCTAGGC");
-    kmerizeAndMakeBitVector(contig, bitVector);
+    for (int i = 0; i < NUMBER_OF_READS_CONTIGS; i++)
+    {
+        readsBitVector[i] = new unsigned char[NUMBER_OF_BIT_VECTOR_BYTES];
+    }
+        
+    for (int i = 0; i < NUMBER_OF_QUERIES_CONTIGS; i++)
+    {
+        queriesBitVector[i] = new unsigned char[NUMBER_OF_BIT_VECTOR_BYTES];
+    }
+
+    if (readFile.is_open())
+    {
+        while (getline (readFile, line))
+        {
+            // cout << line << '\n';
+            if (line.find("chr") == std::string::npos && !line.empty())
+            {
+                strncpy(contig, line.c_str(), CONTIG_SIZE);
+                contig[CONTIG_SIZE] = '\0';
+                kmerizeAndMakeBitVector(contig, readsBitVector[readCount]);
+                readCount++;
+            }
+        }
+        readFile.close();
+    } else cout << "Unable to open file"; 
+
+    if (queryFile.is_open())
+    {
+        while (getline (queryFile, line))
+        {
+            // cout << line << '\n';
+            if (line.find("chr") == std::string::npos && !line.empty())
+            {
+                strncpy(contig, line.c_str(), CONTIG_SIZE);
+                contig[CONTIG_SIZE] = '\0';
+                kmerizeAndMakeBitVector(contig, queriesBitVector[queryCount]);
+                queryCount++;
+            }
+        }
+        queryFile.close();
+    } else cout << "Unable to open file"; 
+
+    cout << "kmer size is : " << KMER_SIZE << endl;
+    cout << "number of reads : " << readCount << " number of queries : " << queryCount << endl;
+    unsigned char query[NUMBER_OF_BIT_VECTOR_BYTES];
+    int theSameKmers=0;
+    for (int i = 0; i < queryCount; i++)
+    {
+        // for (int j = 0; j < NUMBER_OF_BIT_VECTOR_BYTES; j++)
+        // {
+        //     query[i] = queriesBitVector[i][j];
+        // }
+        for (int k = 0; k < readCount; k++)
+        {
+            theSameKmers=0;
+            for (int l = 0; l < NUMBER_OF_BIT_VECTOR_BYTES; l++)
+            {
+                if(l==0)  
+                    cout << "read : " << (int)readsBitVector[k][l] << "\t query : " << (int)query[l] << endl;    
+                if (readsBitVector[k][l] & queriesBitVector[i][l] != 0)
+                {
+                    theSameKmers++;
+                }
+            }
+            cout << "the same kmers:" <<theSameKmers << endl;
+            if (theSameKmers == (CONTIG_SIZE - KMER_SIZE + 1))
+            {
+                cout << "read : " << k << "\t query : " << i << endl;
+            }
+                      
+        }
+        cout << " query : " << i << endl;
+        
+    }
+    
+    // cout << "number of bit vector bytes is : " << NUMBER_OF_BIT_VECTOR_BYTES << endl;
+    
+    // strcpy(contig, "GCCCTGAT?GAATTACCTCGTCTTTTCTCATATAACATGTCCTGGGAAGCCACAACATTGTGGTAAAGCTGTTCAACTACCACCGATACCATAGCAAGATGCTCATCTAGACTGTGACGACAATTACATCGTGAGAGATTGTGCTCTAGGC");
+    // kmerizeAndMakeBitVector(contig, bitVector);
     // kmerizeAndReadBitVector(contig, bitVector);
     // for(int i=0 ; i<NUMBER_OF_BIT_VECTOR_BYTES ; i++)
     // {
