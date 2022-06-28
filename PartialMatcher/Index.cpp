@@ -75,7 +75,6 @@ void kmerizeAndMakeBitVector(const char* contig, unsigned char* bitVector)
     {
         cout << "Error : Contig size :" << strlen(contig) << " is not vlaid!" << endl;
     }
-
     for(int i=0 ; i <= CONTIG_SIZE-KMER_SIZE ; i++)
     {
         strncpy(kmer, contig+i, KMER_SIZE);
@@ -87,6 +86,7 @@ void kmerizeAndMakeBitVector(const char* contig, unsigned char* bitVector)
 void kmerizeAndReadBitVector(const char* contig, unsigned char* bitVector)
 {
     char kmer[KMER_SIZE];
+    int nonzeroPatterns = 0;
     if(strlen(contig) != CONTIG_SIZE)
     {
         cout << "Error : Contig size :" << strlen(contig) << " is not vlaid!" << endl;
@@ -96,33 +96,43 @@ void kmerizeAndReadBitVector(const char* contig, unsigned char* bitVector)
     {
         strncpy(kmer, contig+i, KMER_SIZE);
         kmer[KMER_SIZE]='\0';
-        cout << "i = " << i <<"\t : " << getBitVector(kmer, bitVector, i+(KMER_SIZE/2)) << endl;
+        int pattern = getBitVector(kmer, bitVector, i+(KMER_SIZE/2));
+        // if (pattern != 0)
+        // {
+        //     cout << "i = " << i <<"\t pattern : " << pattern << endl;
+        // }
+        // nonzeroPatterns++;   
     }
+    // cout << "nonzeroPatterns : " << nonzeroPatterns << endl;
 }
+
+unsigned char ** createBitVector(int numberOfContigs, int initialValue, int numberOfBytesInBitVector)
+{
+    unsigned char **bitVector = new unsigned char*[numberOfContigs];
+    for (int i = 0; i < numberOfContigs; i++)
+    {
+        bitVector[i] = new unsigned char[numberOfBytesInBitVector];
+        for (int j = 0; j < numberOfBytesInBitVector; ++j) {
+            bitVector[i][j] = initialValue;
+        }
+    }
+    return bitVector;
+}
+
 
 int main()
 {
     char contig[151];
     string line;
-    // ifstream readFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledDataFromSRR.fa");
-    // ifstream queryFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledQueryDataFromSRR.fa");
-    ifstream readFile("in.txt");
-    ifstream queryFile("q.txt");
+    ifstream readFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledDataFromSRR.fa");
+    ifstream queryFile ("/bigtemp/rgq5aw/naiveBitVectorData/sampledQueryDataFromSRR.fa");
+    // ifstream readFile("in.txt");
+    // ifstream queryFile("q.txt");
     int readCount = 0;
     int queryCount = 0;
-    unsigned char **readsBitVector = new unsigned char*[NUMBER_OF_READS_CONTIGS];
-    unsigned char **queriesBitVector = new unsigned char*[1000];
-    
-    for (int i = 0; i < NUMBER_OF_READS_CONTIGS; i++)
-    {
-        readsBitVector[i] = new unsigned char[NUMBER_OF_BIT_VECTOR_BYTES];
-    }
-        
-    for (int i = 0; i < NUMBER_OF_QUERIES_CONTIGS; i++)
-    {
-        queriesBitVector[i] = new unsigned char[NUMBER_OF_BIT_VECTOR_BYTES];
-    }
-
+    unsigned char **readsBitVector = createBitVector(NUMBER_OF_READS_CONTIGS, 0, NUMBER_OF_BIT_VECTOR_BYTES);
+    unsigned char **queriesBitVector = createBitVector(NUMBER_OF_QUERIES_CONTIGS, 0, NUMBER_OF_BIT_VECTOR_BYTES);
+ 
     if (readFile.is_open())
     {
         while (getline (readFile, line))
@@ -132,7 +142,7 @@ int main()
             {
                 strncpy(contig, line.c_str(), CONTIG_SIZE);
                 contig[CONTIG_SIZE] = '\0';
-                kmerizeAndMakeBitVector(contig, readsBitVector[readCount]);
+                kmerizeAndMakeBitVector(contig, readsBitVector[queryCount]);
                 readCount++;
             }
         }
@@ -155,39 +165,49 @@ int main()
         queryFile.close();
     } else cout << "Unable to open file"; 
 
-    cout << "kmer size is : " << KMER_SIZE << endl;
     cout << "number of reads : " << readCount << " number of queries : " << queryCount << endl;
+
     unsigned char query[NUMBER_OF_BIT_VECTOR_BYTES];
-    int theSameKmers=0;
+    int theSameKmers = 0;
+    int theSamePairs = 0;
+    int firstHalfPatternCheckResult = 0;
+    int secondHalfPatternCheckResult = 0;
     for (int i = 0; i < queryCount; i++)
     {
-        // for (int j = 0; j < NUMBER_OF_BIT_VECTOR_BYTES; j++)
-        // {
-        //     query[i] = queriesBitVector[i][j];
-        // }
+        cout << "query : " << i << endl;
+        firstHalfPatternCheckResult = 0;
+        secondHalfPatternCheckResult = 0;
         for (int k = 0; k < readCount; k++)
         {
             theSameKmers=0;
             for (int l = 0; l < NUMBER_OF_BIT_VECTOR_BYTES; l++)
             {
-                if(l==0)  
-                    cout << "read : " << (int)readsBitVector[k][l] << "\t query : " << (int)query[l] << endl;    
-                if (readsBitVector[k][l] & queriesBitVector[i][l] != 0)
+                firstHalfPatternCheckResult = (readsBitVector[k][l] & 0x07) & (queriesBitVector[i][l] & 0x07);
+                secondHalfPatternCheckResult = ((readsBitVector[k][l] >> NUMBER_OF_BITS_FOR_EACH_KMER) & 0x07) & ((queriesBitVector[i][l] >> NUMBER_OF_BITS_FOR_EACH_KMER)& 0x07);
+                if (firstHalfPatternCheckResult != 0)
                 {
                     theSameKmers++;
+                    // cout << ", " << 2*l;
+
                 }
+                if (secondHalfPatternCheckResult != 0)
+                {
+                    theSameKmers++;
+                    // cout << ", " << 2*l+1;
+                }
+                
             }
-            cout << "the same kmers:" <<theSameKmers << endl;
+            // cout << "the same kmers:" <<theSameKmers << endl;
+
             if (theSameKmers == (CONTIG_SIZE - KMER_SIZE + 1))
             {
                 cout << "read : " << k << "\t query : " << i << endl;
+                theSamePairs++;
             }
                       
-        }
-        cout << " query : " << i << endl;
-        
+        }        
     }
-    
+    cout << "the same pairs : " << theSamePairs << endl;
     // cout << "number of bit vector bytes is : " << NUMBER_OF_BIT_VECTOR_BYTES << endl;
     
     // strcpy(contig, "GCCCTGAT?GAATTACCTCGTCTTTTCTCATATAACATGTCCTGGGAAGCCACAACATTGTGGTAAAGCTGTTCAACTACCACCGATACCATAGCAAGATGCTCATCTAGACTGTGACGACAATTACATCGTGAGAGATTGTGCTCTAGGC");
@@ -197,6 +217,15 @@ int main()
     // {
     //     cout << i << " = " << (unsigned int)bitVector[i] << endl;
     // }
-    
+    //Free each sub-array
+    for(int i = 0; i < NUMBER_OF_READS_CONTIGS; i++) {
+        delete[] readsBitVector[i];   
+    }
+    for(int i = 0; i < NUMBER_OF_QUERIES_CONTIGS; i++) {
+        delete[] queriesBitVector[i];   
+    }
+    //Free the array of pointers
+    delete[] readsBitVector;
+    delete[] queriesBitVector;
     return 0;
 }
