@@ -132,17 +132,22 @@ int main()
     int queryCount = 0;
     unsigned char **readsBitVector = createBitVector(NUMBER_OF_READS_CONTIGS, 0, NUMBER_OF_BIT_VECTOR_BYTES);
     unsigned char **queriesBitVector = createBitVector(NUMBER_OF_QUERIES_CONTIGS, 0, NUMBER_OF_BIT_VECTOR_BYTES);
+    string readsArr[NUMBER_OF_READS_CONTIGS];
+    string queriesArr[NUMBER_OF_QUERIES_CONTIGS];
+    ofstream out("output.txt");
+    
  
     if (readFile.is_open())
     {
         while (getline (readFile, line))
         {
+            readsArr[readCount] = line;
             // cout << line << '\n';
             if (line.find("chr") == std::string::npos && !line.empty())
             {
                 strncpy(contig, line.c_str(), CONTIG_SIZE);
                 contig[CONTIG_SIZE] = '\0';
-                kmerizeAndMakeBitVector(contig, readsBitVector[queryCount]);
+                kmerizeAndMakeBitVector(contig, readsBitVector[readCount]);
                 readCount++;
             }
         }
@@ -153,6 +158,7 @@ int main()
     {
         while (getline (queryFile, line))
         {
+            queriesArr[queryCount] = line;
             // cout << line << '\n';
             if (line.find("chr") == std::string::npos && !line.empty())
             {
@@ -166,57 +172,66 @@ int main()
     } else cout << "Unable to open file"; 
 
     cout << "number of reads : " << readCount << " number of queries : " << queryCount << endl;
-
+    out << "number of reads : " << readCount << " number of queries : " << queryCount << endl;
+    
     unsigned char query[NUMBER_OF_BIT_VECTOR_BYTES];
-    int theSameKmers = 0;
-    int theSamePairs = 0;
+    int similarKmers = 0;
+    int similarPairs = 0;
+    int similarReadsForQuery = 0;
+    int trueSimilarPairs = 0;
+    int trueSimilarReadsForQuery = 0;
     int firstHalfPatternCheckResult = 0;
     int secondHalfPatternCheckResult = 0;
+    
     for (int i = 0; i < queryCount; i++)
     {
-        cout << "query : " << i << endl;
+        out << "query : " << i << "\t["<< queriesArr[i] << "]" << endl;
         firstHalfPatternCheckResult = 0;
         secondHalfPatternCheckResult = 0;
+        similarReadsForQuery = 0;
+        trueSimilarReadsForQuery = 0;
         for (int k = 0; k < readCount; k++)
         {
-            theSameKmers=0;
+            similarKmers=0;
             for (int l = 0; l < NUMBER_OF_BIT_VECTOR_BYTES; l++)
             {
                 firstHalfPatternCheckResult = (readsBitVector[k][l] & 0x07) & (queriesBitVector[i][l] & 0x07);
                 secondHalfPatternCheckResult = ((readsBitVector[k][l] >> NUMBER_OF_BITS_FOR_EACH_KMER) & 0x07) & ((queriesBitVector[i][l] >> NUMBER_OF_BITS_FOR_EACH_KMER)& 0x07);
                 if (firstHalfPatternCheckResult != 0)
                 {
-                    theSameKmers++;
+                    similarKmers++;
                     // cout << ", " << 2*l;
 
                 }
                 if (secondHalfPatternCheckResult != 0)
                 {
-                    theSameKmers++;
+                    similarKmers++;
                     // cout << ", " << 2*l+1;
                 }
                 
             }
             // cout << "the same kmers:" <<theSameKmers << endl;
 
-            if (theSameKmers == (CONTIG_SIZE - KMER_SIZE + 1))
+            if (similarKmers == (CONTIG_SIZE - KMER_SIZE + 1))
             {
-                cout << "read : " << k << "\t query : " << i << endl;
-                theSamePairs++;
-            }
-                      
-        }        
+                out << "read : " << k << "\t [" << readsArr[k] << "]" <<endl;
+                similarReadsForQuery++;
+                if (queriesArr[i].compare(readsArr[k]) == 0)
+                {
+                    trueSimilarReadsForQuery++;
+                    // cout << "true!" << endl;
+                }
+                
+            }         
+        } 
+        out << "query : " << i << "\tsimilarReadsForQuery : " << similarReadsForQuery << "\ttrueSimilarReadsForQuery : " << trueSimilarReadsForQuery <<endl;
+        cout << "query : " << i << "\tsimilarReadsForQuery : " << similarReadsForQuery << "\ttrueSimilarReadsForQuery : " << trueSimilarReadsForQuery <<endl;
+        similarPairs += similarReadsForQuery;
+        trueSimilarPairs += trueSimilarReadsForQuery;
     }
-    cout << "the same pairs : " << theSamePairs << endl;
-    // cout << "number of bit vector bytes is : " << NUMBER_OF_BIT_VECTOR_BYTES << endl;
-    
-    // strcpy(contig, "GCCCTGAT?GAATTACCTCGTCTTTTCTCATATAACATGTCCTGGGAAGCCACAACATTGTGGTAAAGCTGTTCAACTACCACCGATACCATAGCAAGATGCTCATCTAGACTGTGACGACAATTACATCGTGAGAGATTGTGCTCTAGGC");
-    // kmerizeAndMakeBitVector(contig, bitVector);
-    // kmerizeAndReadBitVector(contig, bitVector);
-    // for(int i=0 ; i<NUMBER_OF_BIT_VECTOR_BYTES ; i++)
-    // {
-    //     cout << i << " = " << (unsigned int)bitVector[i] << endl;
-    // }
+    out << "the same pairs : " << similarPairs << "\t true similar pairs : "<< trueSimilarPairs << endl;
+    cout << "the same pairs : " << similarPairs << "\t true similar pairs : "<< trueSimilarPairs << endl;
+
     //Free each sub-array
     for(int i = 0; i < NUMBER_OF_READS_CONTIGS; i++) {
         delete[] readsBitVector[i];   
@@ -227,5 +242,6 @@ int main()
     //Free the array of pointers
     delete[] readsBitVector;
     delete[] queriesBitVector;
+    out.close();
     return 0;
 }
