@@ -85,17 +85,29 @@ int main()
     char contig[151];
     int contigCount = 0;
     int nonAlphCount = 0;
+    int totalNumberOfContigs = 0;
+    ofstream out("output.txt");
+
     if (readFile.is_open())
     {
         while (getline (readFile, line))
-        {
-            if (line.find("N") != std::string::npos)
+        {   
+            if (!line.empty() && line.find("SRR") == std::string::npos)
             {
-                nonAlphCount++;
-            }
-            
-            if (!line.empty() && line.find("SRR") == std::string::npos && line.find("N") == std::string::npos)
-            {
+                totalNumberOfContigs++;
+                
+                // if (totalNumberOfContigs>10000)
+                // {
+                //     cout << "number of all contigs : " << totalNumberOfContigs << endl;
+                //     break;
+                // }
+
+                if (line.find_first_not_of("ACGTacgt") != std::string::npos)
+                {
+                    nonAlphCount++;
+                    continue;                
+                }
+                
                 strncpy(contig, line.c_str(), CONTIG_SIZE);
                 contig[CONTIG_SIZE] = '\0';
                 kmerizeAndCountKmers(contig, kmerCounts);
@@ -114,17 +126,52 @@ int main()
         readFile.close();
     } else cout << "Unable to open file"; 
     cout << "contig count : " << contigCount << "\tnon Alph Count : " << nonAlphCount << endl;
-    cout << "number of different kmers : " << kmerCounts.size() << "\tpercent of kmers : " << (double)(kmerCounts.size()/NUMBER_OF_POSSIBLE_KMERS) << endl;
-    int totalNumberOfKmers = 0;
-    map<int, int>::iterator it;
-    for (it = kmerCounts.begin(); it != kmerCounts.end(); it++)
+    cout << "number of different kmers : " << kmerCounts.size() << "\tnumber of possible kmers : " << NUMBER_OF_POSSIBLE_KMERS << "\tpercent of kmers : " << (double)(kmerCounts.size()/NUMBER_OF_POSSIBLE_KMERS) << endl;
+    out << "contig count : " << contigCount << "\tnon Alph Count : " << nonAlphCount << endl;
+    out << "number of different kmers : " << kmerCounts.size() << "\tnumber of possible kmers : " << NUMBER_OF_POSSIBLE_KMERS << "\tpercent of kmers : " << (double)(kmerCounts.size()/NUMBER_OF_POSSIBLE_KMERS) << endl;
+    long long totalNumberOfKmers = 0;
+    
+    for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
     {
         totalNumberOfKmers += it->second;
     }
     cout << "total Number Of Kmers : " << totalNumberOfKmers << endl;
-    for (it = kmerCounts.begin(); it != kmerCounts.end(); it++)
+    out << "total Number Of Kmers : " << totalNumberOfKmers << endl;
+
+    int maxCount = 1;
+    for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
     {
-        totalNumberOfKmers += it->second;
+        if (it->second > maxCount)
+        {
+            maxCount = it->second;
+        }   
     }
+    cout << "maxCount : " << maxCount << endl;
+    int *histogramArray = new int[maxCount+1]();
+    for (int i = 0; i < maxCount+1; i++)
+    {
+        int count = 0;
+        for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
+        {
+            if (it->second == i)
+            {
+                count++;
+            }
+        }
+        histogramArray[i]+=count;
+    }
+    
+    cout << "---------------histo array finished------------------" << endl;
+    out << "---------------histo array finished------------------" << endl;
+    long long total = 0;
+    out << "count" <<  "\t, frequency" << endl;
+    for (int i = 0; i < maxCount+1; i++)
+    {
+        out << i << "\t,\t" << histogramArray[i] << endl;
+        total += histogramArray[i];
+    }
+    cout << "total : " << total << endl;
     kmerCounts.clear();
+    delete[] histogramArray;
+    out.close();
 }
