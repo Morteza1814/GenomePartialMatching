@@ -8,13 +8,13 @@
 #include <vector>
 #include <algorithm>
 
-#define KMER_SIZE 12
+#define KMER_SIZE 16
 #define CONTIG_SIZE 150
 
 
 using namespace std;
 
-int NUMBER_OF_POSSIBLE_KMERS = ((pow(4, KMER_SIZE)));
+unsigned long NUMBER_OF_POSSIBLE_KMERS = ((pow(4, KMER_SIZE)));
 
 unsigned long getIndexOfKmerInDictionary(const char* kmer)
 {
@@ -117,9 +117,9 @@ int main()
     map<int,int> kmerCounts;
     vector<int> kmerCountsVec;
     char contig[151];
-    int contigCount = 0;
-    int nonAlphCount = 0;
-    int totalNumberOfContigs = 0;
+    unsigned int contigCount = 0;
+    unsigned int nonAlphCount = 0;
+    unsigned int totalNumberOfContigs = 0;
     ofstream out("output.txt");
     cout << "kmer size : " << KMER_SIZE << endl;
     out << "kmer size : " << KMER_SIZE << endl;
