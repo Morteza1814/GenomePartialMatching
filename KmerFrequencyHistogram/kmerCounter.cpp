@@ -5,8 +5,10 @@
 #include <time.h>
 #include <math.h>
 #include <map>
+#include <vector>
+#include <algorithm>
 
-#define KMER_SIZE 10
+#define KMER_SIZE 12
 #define CONTIG_SIZE 150
 
 
@@ -77,17 +79,51 @@ void kmerizeAndCountKmers(const char* contig, map<int,int> &kmerCounts)
     }
 }
 
+bool cmp(int a, int b)
+{
+    return a < b;
+}
+
+vector<int> sort(map<int, int>& M, ofstream& out)
+{  
+    vector<int> A;
+    long long totalNumberOfKmers = 0;
+
+    // Copy key-value pair from Map
+    // to vector of pairs
+    for (map<int, int>::iterator it = M.begin(); it != M.end(); it++) {
+        A.push_back(it->second);
+        totalNumberOfKmers += it->second;
+    }
+    cout << "total Number Of Kmers : " << totalNumberOfKmers << endl;
+    out << "total Number Of Kmers : " << totalNumberOfKmers << endl;
+  
+    // Sort using comparator function
+    sort(A.begin(), A.end(), cmp);
+  
+    // Print the sorted value
+    // for (auto& it : A) {
+  
+    //     cout << it.first << ' '
+    //          << it.second << endl;
+    // }
+    return A;
+}
+
 int main()
 {
     ifstream readFile ("/bigtemp/rgq5aw/batFiles/SRR1246727.fasta");
     string line;
     map<int,int> kmerCounts;
+    vector<int> kmerCountsVec;
     char contig[151];
     int contigCount = 0;
     int nonAlphCount = 0;
     int totalNumberOfContigs = 0;
     ofstream out("output.txt");
-
+    cout << "kmer size : " << KMER_SIZE << endl;
+    out << "kmer size : " << KMER_SIZE << endl;
+    double tStart = (double)(clock());
     if (readFile.is_open())
     {
         while (getline (readFile, line))
@@ -96,7 +132,7 @@ int main()
             {
                 totalNumberOfContigs++;
                 
-                // if (totalNumberOfContigs>10000)
+                // if (totalNumberOfContigs>1000)
                 // {
                 //     cout << "number of all contigs : " << totalNumberOfContigs << endl;
                 //     break;
@@ -125,53 +161,54 @@ int main()
         }
         readFile.close();
     } else cout << "Unable to open file"; 
+    cout << "timing for counting kmers : " << (double)(clock() - tStart) << endl;
     cout << "contig count : " << contigCount << "\tnon Alph Count : " << nonAlphCount << endl;
     cout << "number of different kmers : " << kmerCounts.size() << "\tnumber of possible kmers : " << NUMBER_OF_POSSIBLE_KMERS << "\tpercent of kmers : " << (double)(kmerCounts.size()/NUMBER_OF_POSSIBLE_KMERS) << endl;
+    //dump to file
     out << "contig count : " << contigCount << "\tnon Alph Count : " << nonAlphCount << endl;
     out << "number of different kmers : " << kmerCounts.size() << "\tnumber of possible kmers : " << NUMBER_OF_POSSIBLE_KMERS << "\tpercent of kmers : " << (double)(kmerCounts.size()/NUMBER_OF_POSSIBLE_KMERS) << endl;
-    long long totalNumberOfKmers = 0;
-    
-    for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
-    {
-        totalNumberOfKmers += it->second;
-    }
-    cout << "total Number Of Kmers : " << totalNumberOfKmers << endl;
-    out << "total Number Of Kmers : " << totalNumberOfKmers << endl;
+    out << "timing for counting kmers : " << (double)(clock() - tStart) << endl;
 
-    int maxCount = 1;
-    for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
+    tStart = (double)(clock());
+    kmerCountsVec = sort(kmerCounts, out);
+    kmerCounts.clear();
+    int numberOfKmers = kmerCountsVec.size();
+    cout << "numberOfKmers : " << numberOfKmers << endl;
+    cout << "maximum vector count : " << kmerCountsVec[numberOfKmers-1] << endl;
+    cout << "minimum vector count : " << kmerCountsVec[0] << endl;
+    //dump to file
+    out << "numberOfKmers : " << numberOfKmers << endl;
+    out << "maximum vector count : " << kmerCountsVec[numberOfKmers-1] << endl;
+    out << "minimum vector count : " << kmerCountsVec[0] << endl;
+
+    map<int, int> histogramMap;
+    int currentCount = kmerCountsVec[0];
+    int count = 1; 
+    histogramMap[kmerCountsVec[0]] = 1;
+    for (int i = 1; i < numberOfKmers; i++)
     {
-        if (it->second > maxCount)
+        if (kmerCountsVec[i] == kmerCountsVec[i-1])
         {
-            maxCount = it->second;
-        }   
-    }
-    cout << "maxCount : " << maxCount << endl;
-    int *histogramArray = new int[maxCount+1]();
-    for (int i = 0; i < maxCount+1; i++)
-    {
-        int count = 0;
-        for (map<int, int>::iterator it = kmerCounts.begin(); it != kmerCounts.end(); it++)
-        {
-            if (it->second == i)
-            {
-                count++;
-            }
+            histogramMap[kmerCountsVec[i]]++;
         }
-        histogramArray[i]+=count;
-    }
-    
-    cout << "---------------histo array finished------------------" << endl;
-    out << "---------------histo array finished------------------" << endl;
+        else
+        {
+            histogramMap[kmerCountsVec[i]] = 1;
+        }     
+    } 
+    out << "-------------------------------------" << endl;
+    cout << "timing for counting frequeincies : " << (double)(clock() - tStart) << endl;
+    out << "timing for counting frequeincies : " << (double)(clock() - tStart) << endl;
+
     long long total = 0;
     out << "count" <<  "\t, frequency" << endl;
-    for (int i = 0; i < maxCount+1; i++)
+    for (map<int, int>::iterator it = histogramMap.begin(); it != histogramMap.end(); it++)
     {
-        out << i << "\t,\t" << histogramArray[i] << endl;
-        total += histogramArray[i];
+        out << it->first << "\t,\t" << it->second << endl;
+        total += (it->first * it->second);
     }
-    cout << "total : " << total << endl;
-    kmerCounts.clear();
-    delete[] histogramArray;
+    cout << "total histogram kmers: " << total << endl;
+    cout << "different kmer counts : " << histogramMap.size() << endl;
+    histogramMap.clear();
     out.close();
 }
