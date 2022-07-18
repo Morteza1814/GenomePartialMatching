@@ -24,3 +24,4 @@ This project is the exact implementation of Bit Vector Idea.
 ## PartialMatchWithPosition
 This project conducts the partial matching between read database and queries by finding the same adjacent kmers in a read and queries using the position of kmers.
 - Making the Index Table (hash map) whose keys are kmers and the values are the positions of the kmer in all the reads in the read database.
+- If the number of adjacent kmers in read and query are more than a threshold, it is partial match
