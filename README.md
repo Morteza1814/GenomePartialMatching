@@ -20,3 +20,7 @@ This project is the exact implementation of Bit Vector Idea.
    - Checking the number of the matched kmers between the query and the read. 
    - If the [number of matched kmers] equals [the number of kmers in a read - (edit_distance*kmer_length)], accept it as a partial match.
    - To calculate the number of True partial matches, I compared the read and the query bp to bp. 
+
+## PartialMatchWithPosition
+This project conducts the partial matching between read database and queries by finding the same adjacent kmers in a read and queries using the position of kmers.
+- Making the Index Table (hash map) whose keys are kmers and the values are the positions of the kmer in all the reads in the read database.
